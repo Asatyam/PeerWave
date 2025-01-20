@@ -4,41 +4,48 @@ import ssl
 import pathlib
 import json
 import os
+import hashlib
 
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 localhost_pem = pathlib.Path(__file__).with_name("localhost.pem")
 ssl_context.load_cert_chain(localhost_pem)
 
 
-async def receive_file(websocket, metadata: dict):
+def verify_checksum(file_path, expected_checksum):
+    sha256_hash = hashlib.sha256()
+    try:
+        with open(file_path, "rb") as file:
+            while chunk := file.read(4096):
+                sha256_hash.update(chunk)
 
-    output_file = metadata["file_name"]
+        actual_checksum = sha256_hash.hexdigest()
+        return actual_checksum == expected_checksum
+
+    except Exception as e:
+        print(f"Error calculating checksum for {file_path}: {e}")
+        return False
+
+
+async def validate_file(actual_size, output_file, metadata):
     expected_size = metadata["file_size"]
+    expected_checksum = metadata["checksum"]
+    if actual_size != expected_size:
+        return False
+    if not verify_checksum(output_file, expected_checksum):
+        return False
+    return True
 
+
+async def receive_file(websocket, metadata: dict):
+    print(metadata)
+    output_file = metadata["file_name"]
     retries = 0
     max_retries = 3
     while retries < max_retries:
-        print(retries)
         try:
-            # Open the file and write in binary mode
-            actual_size = 0
-            chunk_count = 0
-            with open(output_file, "wb") as file:
-                while True:
-                    chunk = await websocket.recv()
-                    if chunk == b"":
-                        print("EOF")
-                        break
-                    file.write(chunk)
-                    actual_size += len(chunk)
-                    chunk_count += 1
-                    print(f"{chunk_count}: {actual_size}bytes received")
-            if actual_size != expected_size:
-                await websocket.send("0")
+            actual_size = await receive_chunk(websocket, output_file)
+            if not await validate_file(actual_size, output_file, metadata):
                 retries += 1
-                print(
-                    f"File size mismatch! Expected: {expected_size}, but got: {actual_size}"
-                )
                 continue
 
             print(f"File saved as {output_file}")
@@ -51,7 +58,22 @@ async def receive_file(websocket, metadata: dict):
             await asyncio.sleep(2)
     if retries == max_retries:
         print(f"Max retries reached. File could not be saved after {max_retries}")
-        await websocket.send("0")
+
+
+async def receive_chunk(websocket, output_file):
+    actual_size = 0
+    chunk_count = 0
+    with open(output_file, "wb") as file:
+        while True:
+            chunk = await websocket.recv()
+            if chunk == b"":
+                print("EOF")
+                break
+            file.write(chunk)
+            actual_size += len(chunk)
+            chunk_count += 1
+            print(f"{chunk_count}: {actual_size}bytes received")
+    return actual_size
 
 
 async def ws_server(websocket):
