@@ -11,16 +11,32 @@ ssl_context.load_verify_locations(localhost_pem)
 
 
 async def send_file(ws, file_path, chunk_size=1024):
-    file_contents = None
+    success = False
+    retries = 0
+    max_retries = 3
+    retry_delay = 2
     try:
-        with open(file_path, "rb") as file:
-            while True:
-                chunk = file.read(chunk_size)
-                if not chunk:
-                    break
-                await ws.send(chunk)
-            await ws.send(b"")
-        print("File sent successfully")
+        while not success and retries<max_retries:
+            with open(file_path, "rb") as file:
+                while True:
+                    chunk = file.read(chunk_size)
+                    if not chunk:
+                        break
+                    await ws.send(chunk)
+                await ws.send(b"")
+            msg = await ws.recv()
+            if msg == "1":
+                success = True
+            retries += 1
+            if not success:
+                print(f"File not tranferred. Retrying...{retries}/{max_retries}")
+                await asyncio.sleep(retry_delay) 
+
+        if success:
+            print("File transferred successfully")
+        else:
+            print("Something went wrong!")
+
     except FileNotFoundError:
         print(f"Error: The file '{file_path}' does not exist.")
     except Exception as e:
@@ -44,7 +60,6 @@ async def ws_client():
         if to_send_metadata == "y":
             await ws.send(json.dumps(metadata))
         await send_file(ws, filepath, chunk_size=10)
-        print("File Transferred successfully!")
 
 
 asyncio.run(ws_client())
