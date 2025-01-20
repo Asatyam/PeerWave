@@ -1,21 +1,34 @@
 import websockets
 import asyncio
+import os
+import json
+
+
+async def send_file(ws):
+    file_contents = None
+    with open("./test.txt", "rb") as file:
+        file_contents = file.read()
+    await ws.send(file_contents)
+    print("File sent successfully")
 
 async def ws_client():
     print("WebScoket: Client Connected")
     url = "ws://127.0.0.1:7890"
     async with websockets.connect(url) as ws:
-        name = input("Your name (type 'exit'to quit): ")
-
-        if name == "exit":
-            exit()
-        age = input("Your Age: ")
-        await ws.send(f"{name}")
-        await ws.send(f"{age}")
-
-        while True:
+        filepath = 'test.txt'
+        file_name = os.path.basename(filepath)
+        file_size = os.path.getsize(filepath)
+        metadata = {
+            "file_name": file_name,
+            "file_size": file_size
+        }
+        to_send_metadata = input("Do you wish to send the metadata(y/n)?")
+        if to_send_metadata == "y":
+            await ws.send(json.dumps(metadata))
             msg = await ws.recv()
-            print(msg)
+            if msg == "Yes":
+                await send_file(ws)
+                print("File Transferred successfully!")
+
 
 asyncio.run(ws_client())
-

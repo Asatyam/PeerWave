@@ -1,0 +1,2 @@
+This is a text file to check file transfer from client 
+to the server, for now.
