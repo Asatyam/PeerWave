@@ -1,12 +1,17 @@
 import websockets
 import asyncio
-import typing
+import ssl
+import pathlib
 
+ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+localhost_pem = pathlib.Path(__file__).with_name("localhost.pem")
+ssl_context.load_cert_chain(localhost_pem)
 
 async def receive_file(websocket):
     file_recv = await websocket.recv()
     output_file = "output.txt"
     try:
+        # Open the file and write in binary mode
         with open(output_file, "wb") as file:
             file.write(file_recv)
         print(f" File saved as {output_file}")
@@ -15,7 +20,9 @@ async def receive_file(websocket):
 
 
 async def ws_server(websocket):
-    print("WebSocket: Server started")
+    
+    client_address = websocket.remote_address
+    print(f"New client connected: {client_address}")
 
     try:
         while True:
@@ -30,8 +37,8 @@ async def ws_server(websocket):
 
 
 async def main():
-    print("Starting Server :)")
-    async with websockets.serve(ws_server, "localhost", 7890):
+    async with websockets.serve(ws_server, "localhost", 7890, ssl=ssl_context):
+        print("Started Server :)")
         await asyncio.Future()
 
 
