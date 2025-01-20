@@ -9,16 +9,22 @@ ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 localhost_pem = pathlib.Path(__file__).with_name("localhost.pem")
 ssl_context.load_verify_locations(localhost_pem)
 
-async def send_file(ws, file_path):
+
+async def send_file(ws, file_path, chunk_size=1024):
     file_contents = None
     try:
         with open(file_path, "rb") as file:
-            file_contents = file.read()
-        await ws.send(file_contents)
+            while True:
+                chunk = file.read(chunk_size)
+                if not chunk:
+                    break
+                await ws.send(chunk)
+            await ws.send(b"")
         print("File sent successfully")
     except FileNotFoundError:
         print(f"Error: The file '{file_path}' does not exist.")
-
+    except Exception as e:
+        print(f"Error sending file: {e}")
 
 def get_file_metadata(file_path: str) -> dict:
     # TODO: Handle scenario if the file does not exist
@@ -37,10 +43,8 @@ async def ws_client():
         to_send_metadata = input("Do you wish to send the metadata(y/n)?")
         if to_send_metadata == "y":
             await ws.send(json.dumps(metadata))
-            msg = await ws.recv()
-            if msg == "Yes":
-                await send_file(ws, filepath)
-                print("File Transferred successfully!")
+        await send_file(ws, filepath, chunk_size=10)
+        print("File Transferred successfully!")
 
 
 asyncio.run(ws_client())
