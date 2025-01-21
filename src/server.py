@@ -3,27 +3,12 @@ import asyncio
 import ssl
 import pathlib
 import json
-import os
-import hashlib
+from utils.shared import verify_checksum
 
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 localhost_pem = pathlib.Path(__file__).with_name("localhost.pem")
 ssl_context.load_cert_chain(localhost_pem)
 
-
-def verify_checksum(file_path, expected_checksum):
-    sha256_hash = hashlib.sha256()
-    try:
-        with open(file_path, "rb") as file:
-            while chunk := file.read(4096):
-                sha256_hash.update(chunk)
-
-        actual_checksum = sha256_hash.hexdigest()
-        return actual_checksum == expected_checksum
-
-    except Exception as e:
-        print(f"Error calculating checksum for {file_path}: {e}")
-        return False
 
 
 async def validate_file(actual_size, output_file, metadata):
@@ -37,7 +22,7 @@ async def validate_file(actual_size, output_file, metadata):
 
 
 async def receive_file(websocket, metadata: dict):
-    
+
     output_file = metadata["file_name"]
     retries = 0
     max_retries = 3
@@ -86,15 +71,17 @@ async def ws_server(websocket):
             metadata = await websocket.recv()
             metadata: dict = json.loads(metadata)
             await receive_file(websocket, metadata)
-    except:
-        print("Internal Server Error")
+    except websockets.exceptions.ConnectionClosed:
+        print(f"Client @ {client_address} closed the connection")
+    except Exception as e:
+        print(f"Error: {e}")
 
 
-async def main():
-    async with websockets.serve(ws_server, "localhost", 7890, ssl=ssl_context):
-        print("Started Server :)")
+async def start_server(port):
+    async with websockets.serve(ws_server, "localhost", port, ssl=ssl_context):
+        print(f"Started Server on port:{port})")
         await asyncio.Future()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(start_server(7890))
