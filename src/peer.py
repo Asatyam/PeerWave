@@ -42,11 +42,18 @@ def parse_cmd_line_args():
     return args
 
 
+async def dual_role_mode(port, address, file_path, chunk_size):
+    server_task = asyncio.create_task(start_server(port))
+    await asyncio.sleep(2)
+    client_task = asyncio.create_task(ws_client(address, port, file_path, chunk_size))
+    await asyncio.gather(server_task, client_task)
+
+
 if __name__ == "__main__":
     args = parse_cmd_line_args()
     if args.role == "server":
         asyncio.run(start_server(args.port))
     elif args.role == "client":
         asyncio.run(ws_client(args.address, args.port, args.filepath, args.chunk_size))
-    else:
-        print("Invalid role")
+    elif args.role=="dual":
+        asyncio.run(dual_role_mode(args.port, args.address, args.filepath, args.chunk_size))
