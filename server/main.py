@@ -37,7 +37,7 @@ async def validate_file(actual_size, output_file, metadata):
 
 
 async def receive_file(websocket, metadata: dict):
-    print(metadata)
+    
     output_file = metadata["file_name"]
     retries = 0
     max_retries = 3
