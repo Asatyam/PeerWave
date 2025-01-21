@@ -73,7 +73,7 @@ def get_file_metadata(file_path: str) -> dict:
 
 async def ws_client():
     print("WebScoket: Client Connected")
-    url = "wss://127.0.0.1:7890"
+    url = f"wss://{args.address}:{args.port}"
     async with websockets.connect(url, ssl=ssl_context) as ws:
         try:
             filepath = args.filepath            
@@ -88,7 +88,9 @@ async def ws_client():
 
 def parse_cmd_line_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p","--path",dest="filepath", default="test.txt", help="name of file to transfer")
+    parser.add_argument("-path",dest="filepath", default="test.txt", help="name of file to transfer")
+    parser.add_argument("-p","--port", dest="port", default=7890, help="Specify the port of the server;Default=7890", type=int )
+    parser.add_argument("-addr", dest="address", default="127.0.0.1", help="Specify the ip address of the server;Default=127.0.0.1")
     args = parser.parse_args()
     return args
 
