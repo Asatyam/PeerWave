@@ -79,7 +79,7 @@ async def ws_client():
             filepath = args.filepath            
             metadata = get_file_metadata(file_path=filepath)
             await ws.send(json.dumps(metadata))
-            await send_file(ws, filepath, chunk_size=10)
+            await send_file(ws, filepath, chunk_size=args.chunk_size)
         except FileNotFoundError as e:
             print(f"Error: {e}")
         except Exception as e:
@@ -91,6 +91,8 @@ def parse_cmd_line_args():
     parser.add_argument("-path",dest="filepath", default="test.txt", help="name of file to transfer")
     parser.add_argument("-p","--port", dest="port", default=7890, help="Specify the port of the server;Default=7890", type=int )
     parser.add_argument("-addr", dest="address", default="127.0.0.1", help="Specify the ip address of the server;Default=127.0.0.1")
+    parser.add_argument("-chunk_size", dest="chunk_size", default=1024, help="Specify the size of single chunk of file to transfer of the server;Default=1024B", type=int)
+
     args = parser.parse_args()
     return args
 
