@@ -64,18 +64,22 @@ async def get_peers():
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(api_url)
-            print(f"Active peers: {response.json()}")
+            print(f"Active peers: {json.dumps(response.json(), indent=4)}")
         except Exception as e:
             print(f"Error Getting the peers: {e}")
+
 
 async def search_file(filename):
     api_url = f"http://localhost:8000/search?file={filename}"
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(api_url)
-            print(f"Peers having the requested file {filename}: {response.json()}" )
+            print(
+                f"Peers having the requested file {filename}: {json.dumps(response.json(), indent=4)}"
+            )
         except Exception as e:
             print(f"Error searching file: {e}")
+
 
 async def ws_client(address, port, filepath, chunk_size, filename):
     print("WebScoket: Client Connected")

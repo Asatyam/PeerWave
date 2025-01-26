@@ -13,6 +13,14 @@ class Peer(BaseModel):
     last_active: datetime
     files: list[str]
 
+    def __hash__(self):
+        return hash((self.ip, self.port))
+
+    def __eq__(self, other):
+        if not isinstance(other, Peer):
+            return False
+        return self.ip == other.ip and self.port == other.port
+
 
 class PeerBody(BaseModel):
     ip: str
@@ -23,8 +31,7 @@ class PeerBody(BaseModel):
 class Token(BaseModel):
     token: str
 
-
-peers: set[Peer] = []
+peers: set[Peer] = set()
 
 
 @app.post("/register")
@@ -34,7 +41,7 @@ async def register_peer(peerBody: PeerBody):
         port=peerBody.port,
         metadata=peerBody.metadata,
         last_active=datetime.utcnow(),
-        files=peerBody.files
+        files=peerBody.files,
     )
 
     peers.add(peer)
@@ -48,13 +55,14 @@ async def get_peers():
     response = {"peers": [peer.model_dump() for peer in peers]}
     return response
 
+
 @app.get("/search")
 async def search_files(file: str):
     response = []
     for peer in peers:
         if file in peer.files:
             response.append(peer)
-    
+
     return response
 
 
