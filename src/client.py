@@ -59,11 +59,8 @@ async def read_and_send_chunks(ws, file_path, chunk_size):
     await ws.send(b"")
 
 
-async def get_peers(port):
-    # file_num = str(port)[-1] 
-    filename = "file" + str(int(str(port)[-1]) + 1) + ".txt"
-    api_url = f"http://localhost:8000/peers?file={filename}"  # Tracker URL
-    print(filename)
+async def get_peers():
+    api_url = f"http://localhost:8000/peers"  # Tracker URL
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(api_url)
@@ -71,10 +68,19 @@ async def get_peers(port):
         except Exception as e:
             print(f"Error Getting the peers: {e}")
 
+async def search_file(filename):
+    api_url = f"http://localhost:8000/search?file={filename}"
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(api_url)
+            print(f"Peers having the requested file {filename}: {response.json()}" )
+        except Exception as e:
+            print(f"Error searching file: {e}")
 
-async def ws_client(address, port, filepath, chunk_size):
+async def ws_client(address, port, filepath, chunk_size, filename):
     print("WebScoket: Client Connected")
-    peers = await get_peers(port)
+    peers = await get_peers()
+    searched_peers = await search_file(filename)
     url = f"wss://{address}:{port}"
     async with websockets.connect(url, ssl=ssl_context) as ws:
         try:
