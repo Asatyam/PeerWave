@@ -3,11 +3,8 @@ from server import start_server
 from client import ws_client
 import asyncio
 import httpx
-import atexit
+import os
 import sys
-
-token = None
-
 
 def parse_cmd_line_args():
     parser = argparse.ArgumentParser()
@@ -50,13 +47,17 @@ def parse_cmd_line_args():
         choices=["server", "client", "dual"],
         default="server",
     )
+    parser.add_argument(
+        "--file-dir",
+        dest="dir",
+        type=str,
+        default="files_send"
+    )
 
     args = parser.parse_args()
     return args
 
 
-# FOR TESTING: As the second instance will be run after a time, the
-# client retries to connect to the server at different port
 async def client_with_retries(
     address, port, file_path, chunk_size, max_retries=10, delay=2
 ):
@@ -76,20 +77,29 @@ async def client_with_retries(
 
     print("Max retries reached. Could not connect to the server.")
 
+def get_files_to_send(dir_name):
 
-async def register_peer_with_tracker(ip, port):
+    files_dir = os.getcwd() + "/" + dir_name
+    files = [
+        f
+        for f in os.listdir(files_dir)
+        if os.path.isfile(os.path.join(files_dir, f))
+    ]
+    return files
+
+async def register_peer_with_tracker(ip, port, dir_name):
     api_url = "http://localhost:8000/register"  # Tracker URL
+    files = get_files_to_send(dir_name)
     peer_data = {
         "ip": ip,
         "port": port,
         "metadata": [],
+        "files": files
     }
-    global token
 
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(api_url, json=peer_data)
-            token = response.json()["token"]
             print(f"Registered with tracker: {response.json()}")
         except Exception as e:
             print(f"Error registering with tracker: {e}")
@@ -106,7 +116,7 @@ async def dual_role_mode(server_port, client_port, address, file_path, chunk_siz
 
 async def main(args):
 
-    await register_peer_with_tracker(args.address, args.server_port)
+    await register_peer_with_tracker(args.address, args.server_port, args.dir)
 
     if args.role == "server":
         await start_server(args.server_port)

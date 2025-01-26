@@ -59,9 +59,11 @@ async def read_and_send_chunks(ws, file_path, chunk_size):
     await ws.send(b"")
 
 
-async def get_peers():
-    api_url = "http://localhost:8000/peers"  # Tracker URL
-
+async def get_peers(port):
+    # file_num = str(port)[-1] 
+    filename = "file" + str(int(str(port)[-1]) + 1) + ".txt"
+    api_url = f"http://localhost:8000/peers?file={filename}"  # Tracker URL
+    print(filename)
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(api_url)
@@ -72,7 +74,7 @@ async def get_peers():
 
 async def ws_client(address, port, filepath, chunk_size):
     print("WebScoket: Client Connected")
-    peers = await get_peers()
+    peers = await get_peers(port)
     url = f"wss://{address}:{port}"
     async with websockets.connect(url, ssl=ssl_context) as ws:
         try:
@@ -84,5 +86,6 @@ async def ws_client(address, port, filepath, chunk_size):
         except Exception as e:
             print(f"Something went wrong: {e}")
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     asyncio.run(ws_client("127.0.0.1", 7890, "test.txt", 10))

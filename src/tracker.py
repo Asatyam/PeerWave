@@ -11,7 +11,6 @@ class Peer(BaseModel):
     port: int
     metadata: list | None
     last_active: datetime
-    token: str
     files: list[str]
 
 
@@ -30,34 +29,34 @@ peers: list[Peer] = []
 
 @app.post("/register")
 async def register_peer(peerBody: PeerBody):
-    token = str(uuid.uuid4())
     peer = Peer(
         ip=peerBody.ip,
         port=peerBody.port,
         metadata=peerBody.metadata,
         last_active=datetime.utcnow(),
-        token=token,
         files=peerBody.files
     )
 
     peers.append(peer)
     return {
         "message": f"Peer {peer.ip}@{peer.port} saved to the tracker.",
-        "token": token,
     }
 
 
 @app.get("/peers")
 async def get_peers(file: str | None = None):
+    response = {"peers": [peer.model_dump() for peer in peers]}
     if not file:
-        return {"peers": [peer.model_dump() for peer in peers]}
+        return response
 
     res = []
     for peer in peers:
         if file in peer.files:
             res.append(peer)
-    
-    return {"peers": [peer.model_dump() for peer in res] }
+
+    response =  {"peers": [peer.model_dump() for peer in res] }
+    print(response)
+    return response
 
 
 @app.post("/deregister")
