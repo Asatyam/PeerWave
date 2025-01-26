@@ -1,6 +1,6 @@
 import websockets
 import asyncio
-import os
+import httpx
 import json
 import ssl
 import pathlib
@@ -59,8 +59,20 @@ async def read_and_send_chunks(ws, file_path, chunk_size):
     await ws.send(b"")
 
 
+async def get_peers():
+    api_url = "http://localhost:8000/peers"  # Tracker URL
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(api_url)
+            print(f"Active peers: {response.json()}")
+        except Exception as e:
+            print(f"Error Getting the peers: {e}")
+
+
 async def ws_client(address, port, filepath, chunk_size):
     print("WebScoket: Client Connected")
+    peers = await get_peers()
     url = f"wss://{address}:{port}"
     async with websockets.connect(url, ssl=ssl_context) as ws:
         try:

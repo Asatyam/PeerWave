@@ -2,6 +2,11 @@ import argparse
 from server import start_server
 from client import ws_client
 import asyncio
+import httpx
+import atexit
+import sys
+
+token = None
 
 
 def parse_cmd_line_args():
@@ -50,8 +55,7 @@ def parse_cmd_line_args():
     return args
 
 
-
-#FOR TESTING: As the second instance will be run after a time, the
+# FOR TESTING: As the second instance will be run after a time, the
 # client retries to connect to the server at different port
 async def client_with_retries(
     address, port, file_path, chunk_size, max_retries=10, delay=2
@@ -64,7 +68,7 @@ async def client_with_retries(
             )
             await ws_client(address, port, file_path, chunk_size)
             print("Connected successfully!")
-            return  
+            return
         except ConnectionRefusedError:
             retries += 1
             print(f"Connection failed. Retrying in {delay} seconds...")
@@ -72,17 +76,57 @@ async def client_with_retries(
 
     print("Max retries reached. Could not connect to the server.")
 
-async def dual_role_mode(server_port,client_port, address, file_path, chunk_size):
+
+async def register_peer_with_tracker(ip, port):
+    api_url = "http://localhost:8000/register"  # Tracker URL
+    peer_data = {
+        "ip": ip,
+        "port": port,
+        "metadata": [],
+    }
+    global token
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(api_url, json=peer_data)
+            token = response.json()["token"]
+            print(f"Registered with tracker: {response.json()}")
+        except Exception as e:
+            print(f"Error registering with tracker: {e}")
+
+
+async def dual_role_mode(server_port, client_port, address, file_path, chunk_size):
     server_task = asyncio.create_task(start_server(server_port))
     await asyncio.sleep(2)
-    client_task = asyncio.create_task(client_with_retries(address, client_port, file_path, chunk_size))
+    client_task = asyncio.create_task(
+        client_with_retries(address, client_port, file_path, chunk_size)
+    )
     await asyncio.gather(server_task, client_task)
+
+
+async def main(args):
+
+    await register_peer_with_tracker(args.address, args.server_port)
+
+    if args.role == "server":
+        await start_server(args.server_port)
+    elif args.role == "client":
+        await ws_client(args.address, args.client_port, args.filepath, args.chunk_size)
+    elif args.role == "dual":
+        await dual_role_mode(
+            args.server_port,
+            args.client_port,
+            args.address,
+            args.filepath,
+            args.chunk_size,
+        )
+
 
 if __name__ == "__main__":
     args = parse_cmd_line_args()
-    if args.role == "server":
-        asyncio.run(start_server(args.server_port))
-    elif args.role == "client":
-        asyncio.run(ws_client(args.address, args.client_port, args.filepath, args.chunk_size))
-    elif args.role=="dual":
-        asyncio.run(dual_role_mode(args.server_port, args.client_port, args.address, args.filepath, args.chunk_size))
+
+    try:
+        asyncio.run(main(args))
+    except KeyboardInterrupt:
+        print("Program interrupted, exiting gracefully.")
+        sys.exit(0)
