@@ -33,3 +33,12 @@ def verify_checksum(file_path, expected_checksum):
     except Exception as e:
         print(f"Error calculating checksum for {file_path}: {e}")
         return False
+
+
+def get_files_to_send(dir_name):
+
+    files_dir = os.getcwd() + "/" + dir_name
+    files = [
+        f for f in os.listdir(files_dir) if os.path.isfile(os.path.join(files_dir, f))
+    ]
+    return files
