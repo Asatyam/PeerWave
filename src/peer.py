@@ -1,6 +1,6 @@
 import argparse
 from server import start_server
-from client import ws_client
+from client import ws_client,ws_client2
 import asyncio
 import httpx
 import os
@@ -64,7 +64,8 @@ async def client_with_retries(
             print(
                 f"Attempting to connect to server at {address}:{port} (try {retries + 1}/{max_retries})"
             )
-            await ws_client(address, port, file_path, chunk_size, filename)
+            # await ws_client(address, port, file_path, chunk_size, filename)
+            await ws_client2(address, port, file_path, chunk_size, filename)
             print("Connected successfully!")
             return
         except ConnectionRefusedError:
@@ -97,8 +98,8 @@ async def register_peer_with_tracker(ip, port, dir_name):
             print(f"Error registering with tracker: {e}")
 
 
-async def dual_role_mode(server_port, client_port, address, file_path, chunk_size, filename):
-    server_task = asyncio.create_task(start_server(server_port))
+async def dual_role_mode(server_port, client_port, address, file_path, chunk_size, filename,dir_name):
+    server_task = asyncio.create_task(start_server(server_port, dir_name))
     await asyncio.sleep(2)
     client_task = asyncio.create_task(
         client_with_retries(address, client_port, file_path, chunk_size, filename)
@@ -113,7 +114,8 @@ async def main(args):
     if args.role == "server":
         await start_server(args.server_port)
     elif args.role == "client":
-        await ws_client(args.address, args.client_port, args.filepath, args.chunk_size)
+        # await ws_client(args.address, args.client_port, args.filepath, args.chunk_size)
+        await ws_client2(args.address, args.client_port, args.filepath, args.chunk_size, args.filename)
     elif args.role == "dual":
         await dual_role_mode(
             args.server_port,
@@ -121,7 +123,8 @@ async def main(args):
             args.address,
             args.filepath,
             args.chunk_size,
-            args.filename
+            args.filename,
+            args.dir
         )
 
 
