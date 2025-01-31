@@ -2,4 +2,5 @@
 .p2pvenv
 */localhost.pem
 *.txt
+src/__pycache__/
 src/utils/__pycache__
