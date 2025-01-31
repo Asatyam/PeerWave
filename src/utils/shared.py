@@ -36,8 +36,11 @@ def verify_checksum(file_path, expected_checksum):
 
 
 def get_files_to_send(dir_name):
-
-    files_dir = os.getcwd() + "/" + dir_name
+    files_dir = ""
+    if str(dir_name).startswith("/"):
+        files_dir = dir_name
+    else:
+        files_dir = os.getcwd() + "/" + dir_name
     files = [
         f for f in os.listdir(files_dir) if os.path.isfile(os.path.join(files_dir, f))
     ]
